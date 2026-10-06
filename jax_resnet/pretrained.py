@@ -61,8 +61,10 @@ _TORCHVISION_URLS = {
 
 
 def _torchvision_state_dict(name: str) -> Mapping[str, PyTorchTensor]:
-    return torch.hub.load_state_dict_from_url(_TORCHVISION_URLS[name],
-                                              map_location='cpu')
+    state_dict = torch.hub.load_state_dict_from_url(_TORCHVISION_URLS[name],
+                                                    map_location='cpu')
+    # detach checkpoints so they match what `model.state_dict()` returned with the old torch.hub path
+    return {k: v.detach() for k, v in state_dict.items()}
 
 
 def pretrained_resnet(
