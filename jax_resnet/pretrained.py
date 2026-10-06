@@ -39,6 +39,32 @@ _RESNEST_URL = {
 }
 
 
+# The checkpoints that torch.hub.load('pytorch/vision:v0.10.0', ..., pretrained=True)
+# returned (torchvision v0.10.0 `model_urls`; IMAGENET1K_V1 in newer torchvision).
+# Downloading them directly avoids executing the old torchvision source fetched by
+# torch.hub, which fails to import on recent PyTorch versions.
+_TORCHVISION_URLS = {
+    'resnet18': 'https://download.pytorch.org/models/resnet18-f37072fd.pth',
+    'resnet34': 'https://download.pytorch.org/models/resnet34-b627a593.pth',
+    'resnet50': 'https://download.pytorch.org/models/resnet50-0676ba61.pth',
+    'resnet101': 'https://download.pytorch.org/models/resnet101-63fe2227.pth',
+    'resnet152': 'https://download.pytorch.org/models/resnet152-394f9c45.pth',
+    'resnext50_32x4d':
+    'https://download.pytorch.org/models/resnext50_32x4d-7cdf4587.pth',
+    'resnext101_32x8d':
+    'https://download.pytorch.org/models/resnext101_32x8d-8ba56ff5.pth',
+    'wide_resnet50_2':
+    'https://download.pytorch.org/models/wide_resnet50_2-95faca4d.pth',
+    'wide_resnet101_2':
+    'https://download.pytorch.org/models/wide_resnet101_2-32ee1156.pth',
+}
+
+
+def _torchvision_state_dict(name: str) -> Mapping[str, PyTorchTensor]:
+    return torch.hub.load_state_dict_from_url(_TORCHVISION_URLS[name],
+                                              map_location='cpu')
+
+
 def pretrained_resnet(
     size: int,
     state_dict: Optional[Mapping[str, PyTorchTensor]] = None
@@ -60,9 +86,7 @@ def pretrained_resnet(
         if not torch_exists:
             raise ImportError('Install `torch` to use this function.')
 
-        state_dict = torch.hub.load('pytorch/vision:v0.10.0',
-                                    f'resnet{size}',
-                                    pretrained=True).state_dict()
+        state_dict = _torchvision_state_dict(f'resnet{size}')
 
     pt2jax: Dict[str, Sequence[str]] = {}
     add_bn = _get_add_bn(pt2jax)
@@ -123,9 +147,7 @@ def pretrained_wide_resnet(
         if not torch_exists:
             raise ImportError('Install `torch` to use this function.')
 
-        state_dict = torch.hub.load('pytorch/vision:v0.10.0',
-                                    f'wide_resnet{size}_2',
-                                    pretrained=True).state_dict()
+        state_dict = _torchvision_state_dict(f'wide_resnet{size}_2')
 
     _, variables = pretrained_resnet(size, state_dict)
     model_cls = partial(getattr(resnet, f'WideResNet{size}'), n_classes=1000)
@@ -153,10 +175,8 @@ def pretrained_resnext(
         if not torch_exists:
             raise ImportError('Install `torch` to use this function.')
 
-        state_dict = torch.hub.load(
-            'pytorch/vision:v0.10.0',
-            ('resnext50_32x4d' if size == 50 else 'resnext101_32x8d'),
-            pretrained=True).state_dict()
+        state_dict = _torchvision_state_dict(
+            'resnext50_32x4d' if size == 50 else 'resnext101_32x8d')
 
     _, variables = pretrained_resnet(size, state_dict)
     model_cls = partial(getattr(resnet, f'ResNeXt{size}'), n_classes=1000)

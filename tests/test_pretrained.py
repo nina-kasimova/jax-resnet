@@ -5,11 +5,13 @@ import jax
 import numpy as np
 import pytest
 import torch
+import torchvision
 from fastai.vision.models.xresnet import xresnet50
 # Below imports makes implementing JaxModuleTracker easier
 from flax.linen import BatchNorm, Conv
 
 from jax_resnet import *  # noqa
+from jax_resnet.pretrained import _torchvision_state_dict
 
 
 class JaxModuleTracker:
@@ -126,7 +128,9 @@ def _test_pretrained_resnet_activations(size, rntype):
         _, variables = pretrained_resnet(size)
         thub_name = f'resnet{size}'
 
-    pnet = torch.hub.load('pytorch/vision:v0.10.0', thub_name, pretrained=True).eval()
+    pnet = getattr(torchvision.models, thub_name)()
+    pnet.load_state_dict(_torchvision_state_dict(thub_name))
+    pnet.eval()
 
     for layer in [pnet.layer1, pnet.layer2, pnet.layer3, pnet.layer4]:
         for block in layer:
